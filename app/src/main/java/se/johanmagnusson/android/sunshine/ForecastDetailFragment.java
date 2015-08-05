@@ -73,7 +73,7 @@ public class ForecastDetailFragment extends Fragment implements LoaderManager.Lo
     static final int COL_WEATHER_PRESSURE = 6;
     static final int COL_WEATHER_WIND_SPEED = 7;
     static final int COL_WEATHER_DEGREES = 8;
-    static final int COL_WEATHER_WEATHER_ID = 9;
+    static final int COL_WEATHER_CONDITION_ID = 9;
 
     public ForecastDetailFragment() {
         setHasOptionsMenu(true);
@@ -154,8 +154,8 @@ public class ForecastDetailFragment extends Fragment implements LoaderManager.Lo
         if(!data.moveToFirst())
             return;
 
-        int weatherId = data.getInt(COL_WEATHER_WEATHER_ID);
-        iconView.setImageResource(R.drawable.ic_launcher);
+        int weatherId = data.getInt(COL_WEATHER_CONDITION_ID);
+        iconView.setImageResource(Utility.getArtResourceForWeatherCondition(weatherId));
 
         long date = data.getLong(COL_WEATHER_DATE);
         String day = Utility.getDayName(getActivity(), date);
