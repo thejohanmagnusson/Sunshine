@@ -1,6 +1,5 @@
 package se.johanmagnusson.android.sunshine;
 
-import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -28,7 +27,22 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     private final String LOG_TAG = ForecastFragment.class.getSimpleName();
 
     private static final int FORECAST_LOADER = 0;
+
+    private final String LAST_SCROLL_POSITION_KEY = "last_scroll_position";
+
+    private ListView listView;
     private ForecastAdapter forecastAdapter;
+    private int lastScrollPosition;
+    private boolean mUseTodayLayout;
+
+    /**
+     * A callback interface that all activities containing this fragment must implement.
+     * This mechanism allows activities to be notified of item selections.
+     */
+    public interface Callback {
+         //DetailFragmentCallback for when an item has been selected.
+        public void onItemSelected(Uri dateUri);
+    }
 
     private static final String[] FORECAST_COLUMNS = {
             // In this case the id needs to be fully qualified with a table name, since
@@ -71,15 +85,26 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
         setHasOptionsMenu(true);
     }
 
+    public void setUseTodayLayout(boolean useTodayLayout){
+        //save so it can be set in onCreateView also, adapter can be null here if it is not created yet.
+        mUseTodayLayout = useTodayLayout;
+        if(forecastAdapter != null)
+            forecastAdapter.setUseTodayLayout(mUseTodayLayout);
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
     {
+        if(savedInstanceState != null && savedInstanceState.containsKey(LAST_SCROLL_POSITION_KEY))
+            lastScrollPosition = savedInstanceState.getInt(LAST_SCROLL_POSITION_KEY);
+
         //adapter gets data from loader methods
         forecastAdapter = new ForecastAdapter(getActivity(), null, 0);
+        forecastAdapter.setUseTodayLayout(mUseTodayLayout);
 
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
-        ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
+        listView = (ListView) rootView.findViewById(R.id.listview_forecast);
         listView.setAdapter(forecastAdapter);
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 
@@ -92,17 +117,24 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
                 if (cursor != null) {
                     String locationSetting = Utility.getPreferredLocation(getActivity());
 
-                    Intent intent = new Intent(getActivity(), DetailActivity.class)
-                            .setData(WeatherContract.WeatherEntry.buildWeatherLocationWithDate(
-                                    locationSetting, cursor.getLong(COL_WEATHER_DATE)
-                            ));
-
-                    startActivity(intent);
+                    //create callback
+                    ((Callback) getActivity()).onItemSelected(WeatherContract.WeatherEntry.buildWeatherLocationWithDate(locationSetting, cursor.getLong(COL_WEATHER_DATE)));
                 }
+
+                lastScrollPosition = position;
             }
         });
 
         return rootView;
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+
+        if( lastScrollPosition != listView.INVALID_POSITION)
+            outState.putInt(LAST_SCROLL_POSITION_KEY, lastScrollPosition);
+
+        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -149,6 +181,7 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
 
+        //check so a uri is available, if not no loader should be created
         String locationSetting = Utility.getPreferredLocation(getActivity());
         String sortOrder = WeatherContract.WeatherEntry.COLUMN_DATE + " ASC";
 
@@ -168,6 +201,9 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
         //swap to new cursor, framework will take care of closing the old one.
         forecastAdapter.swapCursor(data);
+
+        if( lastScrollPosition != listView.INVALID_POSITION)
+            listView.smoothScrollToPosition(lastScrollPosition);
     }
 
     @Override

@@ -1,8 +1,7 @@
-<fragment xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/detail_fragment_container"
-    android:name="se.johanmagnusson.android.sunshine.ForecastDetailFragment"
+    android:id="@+id/weather_detail_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context="se.johanmagnusson.android.sunshine.DetailActivity"
-    tools:ignore="MergeRootFrame"/>
+    tools:ignore="MergeRootFrame" />

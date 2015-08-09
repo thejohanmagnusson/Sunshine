@@ -2,6 +2,7 @@ package se.johanmagnusson.android.sunshine;
 
 import android.content.Intent;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager;
@@ -27,10 +28,13 @@ import se.johanmagnusson.android.sunshine.data.WeatherContract;
 public class ForecastDetailFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
 
     private final String LOG_TAG = ForecastDetailFragment.class.getSimpleName();
+    static final String DETAIL_URI = "URI";
+
     private final String SHARE_TAG = "#SunshineApp";
 
     private ShareActionProvider shareActionProvider;
     private String forecast;
+    private Uri mUri;
 
     private ImageView iconView;
     private TextView dayView;
@@ -82,6 +86,12 @@ public class ForecastDetailFragment extends Fragment implements LoaderManager.Lo
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
+        Bundle arguments = getArguments();
+
+        if(arguments != null){
+            mUri = arguments.getParcelable(DETAIL_URI);
+        }
+
         View rootView = inflater.inflate(R.layout.fragment_detail, container, false);
 
         iconView = (ImageView) rootView.findViewById(R.id.detail_icon);
@@ -128,23 +138,33 @@ public class ForecastDetailFragment extends Fragment implements LoaderManager.Lo
         return shareIntent;
     }
 
+    void onLocationChanged( String newLocation ) {
+        // replace the uri, since the location has changed
+
+        if (mUri != null) {
+            long date = WeatherContract.WeatherEntry.getDateFromUri(mUri);
+            mUri = WeatherContract.WeatherEntry.buildWeatherLocationWithDate(newLocation, date);
+
+            getLoaderManager().restartLoader(DETAIL_LOADER, null, this);
+        }
+    }
+
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
 
-        Intent intent = getActivity().getIntent();
+        if(mUri != null) {
+            CursorLoader cursor = new CursorLoader(
+                    getActivity(),
+                    mUri,
+                    DETAIL_COLUMNS,
+                    null,
+                    null,
+                    null);
 
-        if(intent == null)
-            return null;
+            return cursor;
+        }
 
-        CursorLoader cursor = new CursorLoader(
-                getActivity(),
-                intent.getData(),
-                DETAIL_COLUMNS,
-                null,
-                null,
-                null);
-
-        return cursor;
+        return null;
     }
 
     @Override

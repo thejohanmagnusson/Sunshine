@@ -8,21 +8,35 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends ActionBarActivity implements ForecastFragment.Callback{
 
-    private final String FORECAST_FRAGMENT_TAG = "Forecast_Fragment";
-    private String location;
+    private final String DETAIL_FRAGMENT_TAG = "DFTAG";
+    private boolean twoPane;
+
+    private String mlocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
-        location = Utility.getPreferredLocation(this);
         super.onCreate(savedInstanceState);
+        mlocation = Utility.getPreferredLocation(this);
 
         setContentView(R.layout.activity_main);
 
-        if (savedInstanceState == null)
-            getSupportFragmentManager().beginTransaction().add(R.id.main_fragment_container, new ForecastFragment()).commit();
+        //check if two pane
+        if(findViewById(R.id.weather_detail_container) != null) {
+            twoPane = true;
+            //add detail fragment if not added already
+            if (savedInstanceState == null)
+                getSupportFragmentManager().beginTransaction().replace(R.id.weather_detail_container, new ForecastDetailFragment(), DETAIL_FRAGMENT_TAG).commit();
+        }
+        else {
+            twoPane = false;
+            getSupportActionBar().setElevation(0f);
+        }
+
+        //don´t use today layout on list item in two pane mode
+        ForecastFragment forecastFragment = (ForecastFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_forecast);
+        forecastFragment.setUseTodayLayout(!twoPane);
     }
 
     @Override
@@ -30,23 +44,51 @@ public class MainActivity extends ActionBarActivity {
         super.onResume();
 
         //check if location has been changed
+        String location = Utility.getPreferredLocation(this);
 
-        if(!location.equals(Utility.getPreferredLocation(this))) {
-            ForecastFragment forecastFragment = (ForecastFragment)getSupportFragmentManager().findFragmentByTag(FORECAST_FRAGMENT_TAG);
+        if(mlocation != null && !mlocation.equals(location)) {
+            ForecastFragment forecastFragment = (ForecastFragment)getSupportFragmentManager().findFragmentById(R.id.fragment_forecast);
 
             if(forecastFragment != null){
                 forecastFragment.OnLocationShanged();
-                location = Utility.getPreferredLocation(this);
             }
+
+            //dynamic fragment so has no view id so find by tag instead.
+            ForecastDetailFragment detailFragment = (ForecastDetailFragment) getSupportFragmentManager().findFragmentByTag(DETAIL_FRAGMENT_TAG);
+            if(detailFragment != null){
+                detailFragment.onLocationChanged(location);
+            }
+
+            mlocation = location;
         }
     }
 
+    //callback from forecast fragment
+    @Override
+    public void onItemSelected(Uri contentUri) {
+
+        //if two pane replace fragment in fragment container
+        if(twoPane){
+            Bundle args = new Bundle();
+            args.putParcelable(ForecastDetailFragment.DETAIL_URI, contentUri);
+
+            ForecastDetailFragment detailFragment = new ForecastDetailFragment();
+            detailFragment.setArguments(args);
+
+            getSupportFragmentManager().beginTransaction().replace(R.id.weather_detail_container, detailFragment, DETAIL_FRAGMENT_TAG).commit();
+        }
+        //if on pane start new activity
+        else{
+            Intent intent = new Intent(this, DetailActivity.class).setData(contentUri);
+            startActivity(intent);
+        }
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
-        location = Utility.getPreferredLocation(this);
+        mlocation = Utility.getPreferredLocation(this);
 
         return true;
     }
@@ -84,4 +126,5 @@ public class MainActivity extends ActionBarActivity {
             startActivity(locationIntent);
         }
     }
+
 }
